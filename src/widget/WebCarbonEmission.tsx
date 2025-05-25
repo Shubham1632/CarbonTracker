@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getStorage } from '../util';
+import { STORAGE_KEYS_WEB_SEARCH, WebCarbonStats } from '../background';
 
 const WebCarbonEmission = () => {
   const [pageVisits, setPageVisits] = useState(0);
@@ -8,14 +9,11 @@ const WebCarbonEmission = () => {
 
   useEffect(() => {
     async function fetchData() {
-      const visits = (await getStorage<number>('pageVisits')) || 0;
-      const searches = (await getStorage<number>('webSearches')) || 0;
+      const carbonStats = await getStorage<WebCarbonStats>(STORAGE_KEYS_WEB_SEARCH.CARBON_STATS);
 
-      setPageVisits(visits);
-      setWebSearches(searches);
-
-      const emission = (searches * 0.2) + (visits * 0.6);
-      setTotalEmission(Number(emission.toFixed(2)));
+      setPageVisits(carbonStats?.totalVisits || 0);
+      setWebSearches(carbonStats?.totalSearches || 0);
+      setTotalEmission(carbonStats?.totalCarbonEmissions || 0);
     }
 
     fetchData();
@@ -26,7 +24,7 @@ const WebCarbonEmission = () => {
       <h2 className="text-xl font-bold mb-2">Web Carbon Emission</h2>
       <p>🔍 Web Searches: {webSearches}</p>
       <p>📄 Page Visits: {pageVisits}</p>
-      <p>🌱 Total Emission: {totalEmission} gCO₂</p>
+      <p>🌱 Total Emission: {totalEmission.toFixed(4)} gCO₂</p>
     </div>
   );
 };

@@ -94,12 +94,12 @@ const CARBON_CONSTANTS: CarbonConstants = {
 };
 
 // Storage keys
-const STORAGE_KEYS = {
-    CARBON_STATS: 'carbon_tracker_stats',
-    GLOBAL_STATS: 'carbon_tracker_global_stats',
-    DAILY_STATS: 'carbon_tracker_daily_stats',
-    WEEKLY_STATS: 'carbon_tracker_weekly_stats',
-    MONTHLY_STATS: 'carbon_tracker_monthly_stats'
+const STORAGE_KEYS_CHATGPT = {
+    CARBON_STATS: 'carbon_tracker_stats_chatgpt',
+    GLOBAL_STATS: 'carbon_tracker_global_stats_chatgpt',
+    DAILY_STATS: 'carbon_tracker_daily_stats_chatgpt',
+    WEEKLY_STATS: 'carbon_tracker_weekly_stats_chatgpt',
+    MONTHLY_STATS: 'carbon_tracker_monthly_stats_chatgpt'
 };
 
 class ImprovedCarbonTracker {
@@ -222,11 +222,11 @@ class ImprovedCarbonTracker {
     private async loadStatsFromStorage(): Promise<void> {
     try {
         const result = await new Promise<{ [key: string]: any }>((resolve) => {
-            chrome.storage.local.get([STORAGE_KEYS.CARBON_STATS], resolve);
+            chrome.storage.local.get([STORAGE_KEYS_CHATGPT.CARBON_STATS], resolve);
         });
 
-        if (result[STORAGE_KEYS.CARBON_STATS]) {
-            const stats: CarbonTrackerStats = result[STORAGE_KEYS.CARBON_STATS];
+        if (result[STORAGE_KEYS_CHATGPT.CARBON_STATS]) {
+            const stats: CarbonTrackerStats = result[STORAGE_KEYS_CHATGPT.CARBON_STATS];
             this.userMessageCount = stats.userMessageCount || 0;
             this.userTokens = stats.userTokens || 0;
             this.assistantTokens = stats.assistantTokens || 0;
@@ -239,13 +239,7 @@ class ImprovedCarbonTracker {
             this.lastSavedUserTokens = this.userTokens;
             this.lastSavedAssistantTokens = this.assistantTokens;
             this.lastSavedCarbonEmissions = this.carbonEmissions;
-            
-            console.log('Loaded stats from storage:', stats);
-            console.log('Initialized tracking variables:', {
-                lastSavedUserTokens: this.lastSavedUserTokens,
-                lastSavedAssistantTokens: this.lastSavedAssistantTokens,
-                lastSavedCarbonEmissions: this.lastSavedCarbonEmissions
-            });
+        
         } else {
             // Initialize tracking variables as undefined for first run
             this.lastSavedUserTokens = undefined;
@@ -269,26 +263,24 @@ class ImprovedCarbonTracker {
                 sessionStartTime: this.sessionStartTime
             };
 
-            await setStorage(STORAGE_KEYS.CARBON_STATS, stats);
+            await setStorage(STORAGE_KEYS_CHATGPT.CARBON_STATS, stats);
             
             
             await this.updateTimePeriodStats();
             await this.updateGlobalStats();
             
-            console.log('Stats saved to storage:', stats);
         } catch (error) {
             console.error('Error saving stats to storage:', error);
         }
     }
 
    private async updateGlobalStats(): Promise<void> {
-    console.log('Updating global stats...');
     try {
         const result = await new Promise<{ [key: string]: any }>((resolve) => {
-            chrome.storage.local.get([STORAGE_KEYS.GLOBAL_STATS], resolve);
+            chrome.storage.local.get([STORAGE_KEYS_CHATGPT.GLOBAL_STATS], resolve);
         });
 
-        const existingGlobalStats: GlobalCarbonStats = result[STORAGE_KEYS.GLOBAL_STATS] || {
+        const existingGlobalStats: GlobalCarbonStats = result[STORAGE_KEYS_CHATGPT.GLOBAL_STATS] || {
             totalInputTokens: 0,
             totalOutputTokens: 0,
             totalCarbonEmissions: 0,
@@ -310,7 +302,6 @@ class ImprovedCarbonTracker {
                 lastUpdated: Date.now()
             };
             
-            console.log('First save - adding full session values to global stats');
         } else {
             // Calculate only the difference from last save to avoid double counting
             const userTokensDiff = this.userTokens - this.lastSavedUserTokens;
@@ -330,17 +321,15 @@ class ImprovedCarbonTracker {
                 updatedGlobalStats = existingGlobalStats;
             }
 
-            console.log(`Incremental save - adding diffs: user=${userTokensDiff}, assistant=${assistantTokensDiff}, carbon=${carbonEmissionsDiff}`);
         }
 
-        await setStorage(STORAGE_KEYS.GLOBAL_STATS, updatedGlobalStats);
+        await setStorage(STORAGE_KEYS_CHATGPT.GLOBAL_STATS, updatedGlobalStats);
         
         // Update tracking variables after successful save
         this.lastSavedUserTokens = this.userTokens;
         this.lastSavedAssistantTokens = this.assistantTokens;
         this.lastSavedCarbonEmissions = this.carbonEmissions;
 
-        console.log('Global stats updated:', updatedGlobalStats);
     } catch (error) {
         console.error('Error updating global stats:', error);
     }
@@ -353,18 +342,13 @@ class ImprovedCarbonTracker {
         const thisMonth = this.getMonthKey(now);
 
         // Calculate incremental changes
-        console.log('the usertoken diff', this.lastSavedUserTokens, this.userTokens);
         const userTokensDiff = this.lastSavedUserTokens !== undefined ? 
             this.userTokens - this.lastSavedUserTokens : this.userTokens;
-        console.log('the assistant token diff', this.lastSavedAssistantTokens, this.assistantTokens);
         const assistantTokensDiff = this.lastSavedAssistantTokens !== undefined ? 
             this.assistantTokens - this.lastSavedAssistantTokens : this.assistantTokens;
-        console.log('the carbon emissions diff', this.lastSavedCarbonEmissions, this.carbonEmissions);
         const carbonEmissionsDiff = this.lastSavedCarbonEmissions !== undefined ? 
             this.carbonEmissions - this.lastSavedCarbonEmissions : this.carbonEmissions;
 
-        console.log(`Updating time period stats for today=${today}, week=${thisWeek}, month=${thisMonth}`);
-        console.log(`User tokens diff: ${userTokensDiff}, Assistant tokens diff: ${assistantTokensDiff}, Carbon emissions diff: ${carbonEmissionsDiff}`);
 
         await Promise.all([
             this.updateDailyStats(today, userTokensDiff, assistantTokensDiff, carbonEmissionsDiff),
@@ -376,10 +360,10 @@ class ImprovedCarbonTracker {
     private async updateDailyStats(dateKey: string, userTokens: number, assistantTokens: number, carbonEmissions: number): Promise<void> {
         try {
             const result = await new Promise<{ [key: string]: any }>((resolve) => {
-                chrome.storage.local.get([STORAGE_KEYS.DAILY_STATS], resolve);
+                chrome.storage.local.get([STORAGE_KEYS_CHATGPT.DAILY_STATS], resolve);
             });
 
-            const dailyStats = result[STORAGE_KEYS.DAILY_STATS] || {};
+            const dailyStats = result[STORAGE_KEYS_CHATGPT.DAILY_STATS] || {};
             
             if (!dailyStats[dateKey]) {
                 dailyStats[dateKey] = {
@@ -395,8 +379,7 @@ class ImprovedCarbonTracker {
             dailyStats[dateKey].outputTokens += assistantTokens;
             dailyStats[dateKey].lastUpdated = Date.now();
 
-            await setStorage(STORAGE_KEYS.DAILY_STATS, dailyStats);
-            console.log('Daily stats updated for', dateKey, dailyStats[dateKey]);
+            await setStorage(STORAGE_KEYS_CHATGPT.DAILY_STATS, dailyStats);
         } catch (error) {
             console.error('Error updating daily stats:', error);
         }
@@ -405,10 +388,10 @@ class ImprovedCarbonTracker {
     private async updateWeeklyStats(weekKey: string, userTokens: number, assistantTokens: number, carbonEmissions: number): Promise<void> {
         try {
             const result = await new Promise<{ [key: string]: any }>((resolve) => {
-                chrome.storage.local.get([STORAGE_KEYS.WEEKLY_STATS], resolve);
+                chrome.storage.local.get([STORAGE_KEYS_CHATGPT.WEEKLY_STATS], resolve);
             });
 
-            const weeklyStats = result[STORAGE_KEYS.WEEKLY_STATS] || {};
+            const weeklyStats = result[STORAGE_KEYS_CHATGPT.WEEKLY_STATS] || {};
             
             if (!weeklyStats[weekKey]) {
                 weeklyStats[weekKey] = {
@@ -424,8 +407,7 @@ class ImprovedCarbonTracker {
             weeklyStats[weekKey].outputTokens += assistantTokens;
             weeklyStats[weekKey].lastUpdated = Date.now();
 
-            await setStorage(STORAGE_KEYS.WEEKLY_STATS, weeklyStats);
-            console.log('Weekly stats updated for', weekKey, weeklyStats[weekKey]);
+            await setStorage(STORAGE_KEYS_CHATGPT.WEEKLY_STATS, weeklyStats);
         } catch (error) {
             console.error('Error updating weekly stats:', error);
         }
@@ -434,10 +416,10 @@ class ImprovedCarbonTracker {
     private async updateMonthlyStats(monthKey: string, userTokens: number, assistantTokens: number, carbonEmissions: number): Promise<void> {
         try {
             const result = await new Promise<{ [key: string]: any }>((resolve) => {
-                chrome.storage.local.get([STORAGE_KEYS.MONTHLY_STATS], resolve);
+                chrome.storage.local.get([STORAGE_KEYS_CHATGPT.MONTHLY_STATS], resolve);
             });
 
-            const monthlyStats = result[STORAGE_KEYS.MONTHLY_STATS] || {};
+            const monthlyStats = result[STORAGE_KEYS_CHATGPT.MONTHLY_STATS] || {};
             
             if (!monthlyStats[monthKey]) {
                 monthlyStats[monthKey] = {
@@ -453,8 +435,7 @@ class ImprovedCarbonTracker {
             monthlyStats[monthKey].outputTokens += assistantTokens;
             monthlyStats[monthKey].lastUpdated = Date.now();
 
-            await setStorage(STORAGE_KEYS.MONTHLY_STATS, monthlyStats);
-            console.log('Monthly stats updated for', monthKey, monthlyStats[monthKey]);
+            await setStorage(STORAGE_KEYS_CHATGPT.MONTHLY_STATS, monthlyStats);
         } catch (error) {
             console.error('Error updating monthly stats:', error);
         }
@@ -505,7 +486,7 @@ class ImprovedCarbonTracker {
         sessionStartTime: this.sessionStartTime
     };
 
-    await setStorage(STORAGE_KEYS.CARBON_STATS, stats);
+    await setStorage(STORAGE_KEYS_CHATGPT.CARBON_STATS, stats);
     
     this.updateUI();
     console.log('Stats reset successfully');
@@ -590,7 +571,6 @@ class ImprovedCarbonTracker {
             if (!this.isIgnoredMessage(text)) {
                 const tokens = this.estimateTokens(text);
                 this.userTokens += tokens;
-                console.log(`User message ${index + 1}: tokens = ${tokens}`);
             }
         });
 
@@ -599,7 +579,6 @@ class ImprovedCarbonTracker {
             if (!this.isIgnoredMessage(text)) {
                 const tokens = this.estimateTokens(text);
                 this.assistantTokens += tokens;
-                console.log(`Assistant message ${index + 1}: tokens = ${tokens}`);
             }
         });
 
@@ -636,13 +615,11 @@ class ImprovedCarbonTracker {
                     });
 
                 if (validMessages.length > 0) {
-                    console.log(`Found ${validMessages.length} valid assistant messages using selector: ${selector}`);
                     return validMessages;
                 }
             }
         }
 
-        console.log('Falling back to aggressive assistant message selection');
         return this.fallbackAssistantMessageSelection();
     }
 
@@ -728,13 +705,7 @@ class ImprovedCarbonTracker {
 
         this.carbonEmissions = energyUsageWh * CARBON_CONSTANTS.CARBON_INTENSITY;
 
-        console.log(
-            'Calculated emissions:',
-            this.carbonEmissions.toFixed(6),
-            'g CO₂e for',
-            this.totalTokens,
-            'tokens'
-        );
+        
     }
 
     private generateEquivalents(): { activity: string; amount: string; unit: string; }[] {
@@ -939,10 +910,6 @@ class ImprovedCarbonTracker {
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
                     <span>User messages</span>
                     <span>${this.userMessageCount}</span>
-                </div>
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-                    <span>Session</span>
-                    <span>${sessionDurationMinutes} min</span>
                 </div>
             </div>
             <div style="margin-bottom: 18px;">

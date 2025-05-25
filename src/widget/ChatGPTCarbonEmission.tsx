@@ -12,7 +12,7 @@ const ChatGPTCarbonEmission = () => {
   const [carbonStats, setCarbonStats] = useState<GlobalCarbonStats>(emptyGlobalStats);
   useEffect(() => {
     async function fetchData() {
-      const getCarbonStats: GlobalCarbonStats = (await getStorage<GlobalCarbonStats>('carbon_tracker_global_stats')) || emptyGlobalStats;
+      const getCarbonStats: GlobalCarbonStats = (await getStorage<GlobalCarbonStats>('carbon_tracker_global_stats_chatgpt')) || emptyGlobalStats;
       console.log('Carbon stats fetched:', getCarbonStats);
       setCarbonStats(getCarbonStats);
     }
@@ -25,7 +25,7 @@ const ChatGPTCarbonEmission = () => {
       <h2 className="text-xl font-bold mb-2">ChatGPT Carbon Emission</h2>
       <p>🔍 User Tokens: {carbonStats.totalInputTokens}</p>
       <p>📄 Assistant Tokens: {carbonStats.totalOutputTokens}</p>
-      <p>🌱 Total Emission: {carbonStats.totalCarbonEmissions} gCO₂</p>
+      <p>🌱 Total Emission: {carbonStats.totalCarbonEmissions.toFixed(4)} gCO₂</p>
     </div>
   );
 };
