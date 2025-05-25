@@ -19,13 +19,14 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content_script.js"]
+      "js": ["content_script.js"],
+      "type": "module"
     }
   ],
   "background": {
     "type": "module",
     "service_worker": "service_worker.js"
   },
-  "permissions": ["storage", "tabs", "tabGroups", "webNavigation"],
+  "permissions": ["storage", "tabs", "tabGroups", "webNavigation", "activeTab", "scripting"],
   "host_permissions": ["<all_urls>"]
 }
