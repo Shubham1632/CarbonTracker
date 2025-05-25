@@ -61,7 +61,7 @@ const widgetList = [
 ];
 
 const defaultSelected = {
-  cumulative: false,
+  cumulative: true,
   web: false,
   chatgpt: false,
   limit: false,
