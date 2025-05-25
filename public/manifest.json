@@ -1,7 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Chrome Extension Starter",
-  "description": "Chrome extension starter template with React, TypeScript, Vite and Tailwind",
+  "name": "Carbon Tracker",
+  "description": "Chrome extension for tracking carbon emissions from web and ChatGPT usage.",
+  "author": "Shubham Gangurde",
   "icons": {
     "16": "icon.png",
     "48": "icon.png",

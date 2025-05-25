@@ -149,7 +149,7 @@ const getWeekLabel = (weekKey: string, allKeys: string[]) => {
 
 const UsageChart = () => {
   // Only daily/weekly/monthly
-  const [period, setPeriod] = useState<"daily" | "weekly" | "monthly">("daily");
+  const [period, setPeriod] = useState<"daily" | "weekly" | "monthly" | "all">("daily");
   const [source, setSource] = useState<"chatgpt" | "web" | "both">("both");
   const [loading, setLoading] = useState(true);
 
