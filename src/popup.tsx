@@ -62,63 +62,130 @@ const Popup = () => {
 
   return (
     <div
-      className={
-        `p-6 min-w-[24rem] relative transition-all` +
-        (menuOpen ? " min-h-screen" : "")
-      }
-      style={menuOpen ? { minHeight: "100vh" } : undefined}
+      className="min-w-[22rem] min-h-screen relative transition-all"
+      style={{
+        background: "linear-gradient(135deg, #f8fafc 0%, #e0f2ef 100%)",
+        fontFamily: "'Segoe UI', 'Inter', system-ui, sans-serif",
+        color: "#222",
+        minHeight: "100vh",
+        padding: 0,
+        overflow: "hidden",
+      }}
     >
-      {/* Hamburger menu button */}
-      <button
-        className="absolute top-4 right-4 z-20 w-8 h-8 flex flex-col justify-center items-center"
-        onClick={() => setMenuOpen((open) => !open)}
-        aria-label="Open menu"
+      {/* Main content container */}
+      <div
+        className="flex flex-col items-center justify-start"
+        style={{
+          minHeight: "100vh",
+          paddingBottom: "1.2rem",
+          background: "linear-gradient(135deg, #f8fafc 0%, #e0f2ef 100%)",
+        }}
       >
-        <span className="block w-6 h-0.5 bg-gray-800 mb-1 rounded"></span>
-        <span className="block w-6 h-0.5 bg-gray-800 mb-1 rounded"></span>
-        <span className="block w-6 h-0.5 bg-gray-800 rounded"></span>
-      </button>
+        {/* Header with title and hamburger */}
+        <div
+          className="w-full max-w-lg flex items-center justify-between px-4"
+          style={{
+            marginTop: "0.6rem",
+            marginBottom: "0.5rem",
+            background: "transparent",
+            boxShadow: "none",
+            border: "none",
+          }}
+        >
+          <h1
+            className="text-2xl font-bold flex justify-center"
+            style={{
+              color: "#10a37f",
+              letterSpacing: "-1px",
+              margin: 0,
+              background: "transparent",
+            }}
+          >
+            Carbon Tracker
+          </h1>
+          <button
+            className="z-20 w-9 h-9 flex flex-col justify-center items-center rounded-full hover:shadow-lg transition ml-2"
+            onClick={() => setMenuOpen((open) => !open)}
+            aria-label="Open menu"
+          >
+            <span className="block w-5 h-0.5 bg-[#10a37f] mb-1 rounded"></span>
+            <span className="block w-5 h-0.5 bg-[#10a37f] mb-1 rounded"></span>
+            <span className="block w-5 h-0.5 bg-[#10a37f] rounded"></span>
+          </button>
+        </div>
 
-      {/* Collapsible menu popup */}
-      {menuOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 z-30 flex justify-end">
-          <div className="bg-white shadow-lg w-72 h-full p-4 relative">
-            <button
-              className="absolute top-2 right-2 text-xl"
-              onClick={() => setMenuOpen(false)}
-              aria-label="Close menu"
-            >
-              ×
-            </button>
-            <h2 className="font-semibold mb-2 mt-6">Widgets</h2>
-            <ul>
-              {widgetList.map((widget) => (
-                <li key={widget.key} className="flex items-center mb-1">
-                  <input
-                    type="checkbox"
-                    id={widget.key}
-                    checked={selected[widget.key]}
-                    onChange={() => handleCheckbox(widget.key)}
-                    className="mr-2"
-                  />
-                  <label htmlFor={widget.key}>{widget.label}</label>
-                </li>
-              ))}
-            </ul>
+        {/* Collapsible menu popup */}
+        {menuOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-30 z-30 flex justify-end">
+            <div className="bg-white shadow-xl w-72 h-full p-5 relative rounded-l-2xl border-l-4 border-[#10a37f]">
+              <button
+                className="absolute top-3 right-3 text-2xl text-[#10a37f] hover:bg-[#e0f2ef] rounded-full w-8 h-8 flex items-center justify-center"
+                onClick={() => setMenuOpen(false)}
+                aria-label="Close menu"
+              >
+                ×
+              </button>
+              <h2 className="font-semibold mb-4 mt-8 text-[#10a37f] text-lg">
+                Widgets
+              </h2>
+              <ul>
+                {widgetList.map((widget) => (
+                  <li key={widget.key} className="flex items-center mb-3">
+                    <input
+                      type="checkbox"
+                      id={widget.key}
+                      checked={selected[widget.key]}
+                      onChange={() => handleCheckbox(widget.key)}
+                      className="mr-3 accent-[#10a37f] w-5 h-5"
+                    />
+                    <label
+                      htmlFor={widget.key}
+                      className="text-gray-700"
+                    >
+                      {widget.label}
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {/* Widget area */}
+        <div
+          className="w-full max-w-lg relative mt-0"
+          style={{
+            background: "transparent",
+            boxShadow: "none",
+            padding: "0.5rem 0.5rem 0.5rem 0.5rem",
+            maxHeight: "320px",
+            minHeight: "auto",
+            overflowY: "auto",
+            scrollbarWidth: "none",
+            msOverflowStyle: "none",
+            border: "none",
+          }}
+        >
+          {/* Hide scrollbar for all browsers */}
+          <style>
+            {`
+              .max-w-lg::-webkit-scrollbar { display: none; }
+              .max-w-lg { scrollbar-width: none; -ms-overflow-style: none; }
+            `}
+          </style>
+          <div>
+            {widgetList.map((widget) =>
+              selected[widget.key] ? (
+                <div
+                  key={widget.key}
+                  className="mb-2 last:mb-0 transition-all duration-300"
+                >
+                  {widget.component}
+                </div>
+              ) : null
+            )}
           </div>
         </div>
-      )}
-
-      <h1 className="text-2xl font-bold mb-4">Carbon Emission Calculator</h1>
-      {/* Widgets rendered here */}
-      <div>
-        {widgetList.map((widget) =>
-          selected[widget.key] ? (
-            <div key={widget.key} className="mb-3">
-              {widget.component}
-            </div>
-          ) : null
-        )}
       </div>
     </div>
   );
