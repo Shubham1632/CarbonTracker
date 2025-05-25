@@ -33,8 +33,8 @@ interface CarbonConstants {
 }
 
 const CARBON_CONSTANTS: CarbonConstants = {
-    WATTS_PER_TOKEN: 0.003,
-    CARBON_INTENSITY: 0.475,
+    WATTS_PER_TOKEN: 0.0045,
+    CARBON_INTENSITY: 0.59,
     SECONDS_PER_TOKEN: 0.05,
     CHARS_PER_TOKEN: 4,
 
