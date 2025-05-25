@@ -8,6 +8,26 @@ export interface CarbonTrackerStats {
     sessionStartTime: number;
 }
 
+export interface GlobalCarbonStats {
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    totalCarbonEmissions: number;
+    lastUpdated: number;
+}
+
+export interface ChatGPTTimePeriodStats {
+    carbonEmissions: number;
+    inputTokens: number;
+    outputTokens: number;
+    lastUpdated: number;
+}
+
+export interface CarbonStatsByPeriod {
+    daily: ChatGPTTimePeriodStats;
+    weekly: ChatGPTTimePeriodStats;
+    monthly: ChatGPTTimePeriodStats;
+}
+
 // Storage utility function
 export function setStorage<V = any>(key: string, value: V): Promise<boolean> {
     return new Promise((resolve, reject) => {
@@ -75,7 +95,11 @@ const CARBON_CONSTANTS: CarbonConstants = {
 
 // Storage keys
 const STORAGE_KEYS = {
-    CARBON_STATS: 'carbon_tracker_stats'
+    CARBON_STATS: 'carbon_tracker_stats',
+    GLOBAL_STATS: 'carbon_tracker_global_stats',
+    DAILY_STATS: 'carbon_tracker_daily_stats',
+    WEEKLY_STATS: 'carbon_tracker_weekly_stats',
+    MONTHLY_STATS: 'carbon_tracker_monthly_stats'
 };
 
 class ImprovedCarbonTracker {
@@ -90,11 +114,16 @@ class ImprovedCarbonTracker {
     private contentArea: HTMLDivElement | null;
     private isAnalyzing: boolean;
     private isInitialized: boolean;
+    private initAttempts: number;
+    private maxInitAttempts: number;
+    private observer: MutationObserver | null;
+    
+    // Track last saved values to calculate incremental changes
+    private lastSavedUserTokens: number | undefined;
+    private lastSavedAssistantTokens: number | undefined;
+    private lastSavedCarbonEmissions: number | undefined;
 
     constructor() {
-        // Check if we're on ChatGPT domain
-        
-
         this.userMessageCount = 0;
         this.userTokens = 0;
         this.assistantTokens = 0;
@@ -106,46 +135,128 @@ class ImprovedCarbonTracker {
         this.contentArea = null;
         this.isAnalyzing = false;
         this.isInitialized = false;
+        this.initAttempts = 0;
+        this.maxInitAttempts = 20;
+        this.observer = null;
+        
+        // Initialize tracking variables
+        this.lastSavedUserTokens = undefined;
+        this.lastSavedAssistantTokens = undefined;
+        this.lastSavedCarbonEmissions = undefined;
 
         if (!this.isChatGPTDomain()) {
             console.log('Not on ChatGPT domain, carbon tracker will not initialize');
             return;
         }
 
-        this.loadStatsFromStorage().then(() => {
-            this.createUI();
-            this.initWhenReady().then(() => {
-                this.isInitialized = true;
-                console.log('Carbon Tracker initialized successfully');
-            });
+        // Wait for page to be fully loaded before initializing
+        this.waitForPageReady().then(() => {
+            this.initialize();
         });
     }
 
-    private isChatGPTDomain(): boolean {
+    isChatGPTDomain(): boolean {
         return window.location.href.includes('chat.openai.com') || 
-               window.location.href.includes('chatgpt.com') || window.location.href.includes('chat.openai.com');
+               window.location.href.includes('chatgpt.com');
+    }
+
+    private async waitForPageReady(): Promise<void> {
+        return new Promise((resolve) => {
+            if (document.readyState === 'complete') {
+                // Add extra delay to ensure ChatGPT's dynamic content is ready
+                setTimeout(resolve, 2000);
+            } else {
+                window.addEventListener('load', () => {
+                    setTimeout(resolve, 2000);
+                });
+            }
+        });
+    }
+
+    private async initialize(): Promise<void> {
+        try {
+            await this.loadStatsFromStorage();
+            await this.createUIWhenReady();
+            await this.initWhenReady();
+            this.isInitialized = true;
+            console.log('Carbon Tracker initialized successfully');
+        } catch (error) {
+            console.error('Failed to initialize Carbon Tracker:', error);
+        }
+    }
+
+    private async createUIWhenReady(): Promise<void> {
+        return new Promise((resolve, reject) => {
+            const attemptCreateUI = () => {
+                this.initAttempts++;
+                
+                // Check if UI already exists
+                if (document.getElementById('carbon-tracker-container')) {
+                    console.log('UI already exists');
+                    resolve();
+                    return;
+                }
+
+                try {
+                    this.createUI();
+                    if (this.uiContainer && document.body.contains(this.uiContainer)) {
+                        console.log('UI created successfully');
+                        resolve();
+                    } else {
+                        throw new Error('UI creation failed');
+                    }
+                } catch (error) {
+                    if (this.initAttempts >= this.maxInitAttempts) {
+                        reject(new Error(`Failed to create UI after ${this.maxInitAttempts} attempts`));
+                        return;
+                    }
+                    console.log(`UI creation attempt ${this.initAttempts} failed, retrying...`);
+                    setTimeout(attemptCreateUI, 1000);
+                }
+            };
+            
+            attemptCreateUI();
+        });
     }
 
     private async loadStatsFromStorage(): Promise<void> {
-        try {
-            const result = await new Promise<{ [key: string]: any }>((resolve) => {
-                chrome.storage.local.get([STORAGE_KEYS.CARBON_STATS], resolve);
-            });
+    try {
+        const result = await new Promise<{ [key: string]: any }>((resolve) => {
+            chrome.storage.local.get([STORAGE_KEYS.CARBON_STATS], resolve);
+        });
 
-            if (result[STORAGE_KEYS.CARBON_STATS]) {
-                const stats: CarbonTrackerStats = result[STORAGE_KEYS.CARBON_STATS];
-                this.userMessageCount = stats.userMessageCount || 0;
-                this.userTokens = stats.userTokens || 0;
-                this.assistantTokens = stats.assistantTokens || 0;
-                this.totalTokens = stats.totalTokens || 0;
-                this.carbonEmissions = stats.carbonEmissions || 0;
-                this.sessionStartTime = stats.sessionStartTime || Date.now();
-                console.log('Loaded stats from storage:', stats);
-            }
-        } catch (error) {
-            console.error('Error loading stats from storage:', error);
+        if (result[STORAGE_KEYS.CARBON_STATS]) {
+            const stats: CarbonTrackerStats = result[STORAGE_KEYS.CARBON_STATS];
+            this.userMessageCount = stats.userMessageCount || 0;
+            this.userTokens = stats.userTokens || 0;
+            this.assistantTokens = stats.assistantTokens || 0;
+            this.totalTokens = stats.totalTokens || 0;
+            this.carbonEmissions = stats.carbonEmissions || 0;
+            this.sessionStartTime = stats.sessionStartTime || Date.now();
+
+            // Initialize tracking variables with current values
+            // This ensures we don't lose track when reloading the extension
+            this.lastSavedUserTokens = this.userTokens;
+            this.lastSavedAssistantTokens = this.assistantTokens;
+            this.lastSavedCarbonEmissions = this.carbonEmissions;
+            
+            console.log('Loaded stats from storage:', stats);
+            console.log('Initialized tracking variables:', {
+                lastSavedUserTokens: this.lastSavedUserTokens,
+                lastSavedAssistantTokens: this.lastSavedAssistantTokens,
+                lastSavedCarbonEmissions: this.lastSavedCarbonEmissions
+            });
+        } else {
+            // Initialize tracking variables as undefined for first run
+            this.lastSavedUserTokens = undefined;
+            this.lastSavedAssistantTokens = undefined;
+            this.lastSavedCarbonEmissions = undefined;
+            console.log('No existing stats found, starting fresh');
         }
+    } catch (error) {
+        console.error('Error loading stats from storage:', error);
     }
+}
 
     private async saveStatsToStorage(): Promise<void> {
         try {
@@ -159,38 +270,259 @@ class ImprovedCarbonTracker {
             };
 
             await setStorage(STORAGE_KEYS.CARBON_STATS, stats);
+            
+            // Update global stats
+            await this.updateGlobalStats();
+            
+            // Update time period stats
+            await this.updateTimePeriodStats();
+            
             console.log('Stats saved to storage:', stats);
         } catch (error) {
             console.error('Error saving stats to storage:', error);
         }
     }
 
-    private async resetStats(): Promise<void> {
-        this.userMessageCount = 0;
-        this.userTokens = 0;
-        this.assistantTokens = 0;
-        this.totalTokens = 0;
-        this.carbonEmissions = 0;
-        this.sessionStartTime = Date.now();
+   private async updateGlobalStats(): Promise<void> {
+    console.log('Updating global stats...');
+    try {
+        const result = await new Promise<{ [key: string]: any }>((resolve) => {
+            chrome.storage.local.get([STORAGE_KEYS.GLOBAL_STATS], resolve);
+        });
+
+        const existingGlobalStats: GlobalCarbonStats = result[STORAGE_KEYS.GLOBAL_STATS] || {
+            totalInputTokens: 0,
+            totalOutputTokens: 0,
+            totalCarbonEmissions: 0,
+            lastUpdated: Date.now()
+        };
+
+        let updatedGlobalStats: GlobalCarbonStats;
+
+        // First time saving or when tracking variables are undefined
+        if (this.lastSavedUserTokens === undefined || 
+            this.lastSavedAssistantTokens === undefined || 
+            this.lastSavedCarbonEmissions === undefined) {
+            
+            // Add all current session values to global stats
+            updatedGlobalStats = {
+                totalInputTokens: existingGlobalStats.totalInputTokens + this.userTokens,
+                totalOutputTokens: existingGlobalStats.totalOutputTokens + this.assistantTokens,
+                totalCarbonEmissions: existingGlobalStats.totalCarbonEmissions + this.carbonEmissions,
+                lastUpdated: Date.now()
+            };
+            
+            console.log('First save - adding full session values to global stats');
+        } else {
+            // Calculate only the difference from last save to avoid double counting
+            const userTokensDiff = this.userTokens - this.lastSavedUserTokens;
+            const assistantTokensDiff = this.assistantTokens - this.lastSavedAssistantTokens;
+            const carbonEmissionsDiff = this.carbonEmissions - this.lastSavedCarbonEmissions;
+
+            if( userTokensDiff >= 0 || assistantTokensDiff >= 0 || carbonEmissionsDiff >= 0) {
+                updatedGlobalStats = {
+                    totalInputTokens: existingGlobalStats.totalInputTokens + userTokensDiff,
+                    totalOutputTokens: existingGlobalStats.totalOutputTokens + assistantTokensDiff,
+                    totalCarbonEmissions: existingGlobalStats.totalCarbonEmissions + carbonEmissionsDiff,
+                    lastUpdated: Date.now()
+                };
+            }
+            else {
+                // If no changes, keep existing global stats
+                updatedGlobalStats = existingGlobalStats;
+            }
+
+            console.log(`Incremental save - adding diffs: user=${userTokensDiff}, assistant=${assistantTokensDiff}, carbon=${carbonEmissionsDiff}`);
+        }
+
+        await setStorage(STORAGE_KEYS.GLOBAL_STATS, updatedGlobalStats);
         
-        await this.saveStatsToStorage();
-        this.updateUI();
-        console.log('Stats reset successfully');
+        // Update tracking variables after successful save
+        this.lastSavedUserTokens = this.userTokens;
+        this.lastSavedAssistantTokens = this.assistantTokens;
+        this.lastSavedCarbonEmissions = this.carbonEmissions;
+
+        console.log('Global stats updated:', updatedGlobalStats);
+    } catch (error) {
+        console.error('Error updating global stats:', error);
+    }
+}
+
+    private async updateTimePeriodStats(): Promise<void> {
+        const now = Date.now();
+        const today = new Date(now).toDateString();
+        const thisWeek = this.getWeekKey(now);
+        const thisMonth = this.getMonthKey(now);
+
+        // Calculate incremental changes
+        const userTokensDiff = this.lastSavedUserTokens !== undefined ? 
+            this.userTokens - this.lastSavedUserTokens : this.userTokens;
+        const assistantTokensDiff = this.lastSavedAssistantTokens !== undefined ? 
+            this.assistantTokens - this.lastSavedAssistantTokens : this.assistantTokens;
+        const carbonEmissionsDiff = this.lastSavedCarbonEmissions !== undefined ? 
+            this.carbonEmissions - this.lastSavedCarbonEmissions : this.carbonEmissions;
+
+        await Promise.all([
+            this.updateDailyStats(today, userTokensDiff, assistantTokensDiff, carbonEmissionsDiff),
+            this.updateWeeklyStats(thisWeek, userTokensDiff, assistantTokensDiff, carbonEmissionsDiff),
+            this.updateMonthlyStats(thisMonth, userTokensDiff, assistantTokensDiff, carbonEmissionsDiff)
+        ]);
     }
 
-    private async initWhenReady(): Promise<void> {
-        const attemptInit = (): void => {
-            const chatContainer = this.findChatContainer();
-            if (chatContainer) {
-                console.log('Chat container found, setting up observer');
-                this.setupConversationObserver(chatContainer);
-                this.analyzeConversation();
-            } else {
-                console.log('Chat container not found, retrying...');
-                setTimeout(attemptInit, 1000);
+    private async updateDailyStats(dateKey: string, userTokens: number, assistantTokens: number, carbonEmissions: number): Promise<void> {
+        try {
+            const result = await new Promise<{ [key: string]: any }>((resolve) => {
+                chrome.storage.local.get([STORAGE_KEYS.DAILY_STATS], resolve);
+            });
+
+            const dailyStats = result[STORAGE_KEYS.DAILY_STATS] || {};
+            
+            if (!dailyStats[dateKey]) {
+                dailyStats[dateKey] = {
+                    carbonEmissions: 0,
+                    inputTokens: 0,
+                    outputTokens: 0,
+                    lastUpdated: Date.now()
+                };
             }
-        };
-        attemptInit();
+
+            dailyStats[dateKey].carbonEmissions += carbonEmissions;
+            dailyStats[dateKey].inputTokens += userTokens;
+            dailyStats[dateKey].outputTokens += assistantTokens;
+            dailyStats[dateKey].lastUpdated = Date.now();
+
+            await setStorage(STORAGE_KEYS.DAILY_STATS, dailyStats);
+            console.log('Daily stats updated for', dateKey);
+        } catch (error) {
+            console.error('Error updating daily stats:', error);
+        }
+    }
+
+    private async updateWeeklyStats(weekKey: string, userTokens: number, assistantTokens: number, carbonEmissions: number): Promise<void> {
+        try {
+            const result = await new Promise<{ [key: string]: any }>((resolve) => {
+                chrome.storage.local.get([STORAGE_KEYS.WEEKLY_STATS], resolve);
+            });
+
+            const weeklyStats = result[STORAGE_KEYS.WEEKLY_STATS] || {};
+            
+            if (!weeklyStats[weekKey]) {
+                weeklyStats[weekKey] = {
+                    carbonEmissions: 0,
+                    inputTokens: 0,
+                    outputTokens: 0,
+                    lastUpdated: Date.now()
+                };
+            }
+
+            weeklyStats[weekKey].carbonEmissions += carbonEmissions;
+            weeklyStats[weekKey].inputTokens += userTokens;
+            weeklyStats[weekKey].outputTokens += assistantTokens;
+            weeklyStats[weekKey].lastUpdated = Date.now();
+
+            await setStorage(STORAGE_KEYS.WEEKLY_STATS, weeklyStats);
+            console.log('Weekly stats updated for', weekKey);
+        } catch (error) {
+            console.error('Error updating weekly stats:', error);
+        }
+    }
+
+    private async updateMonthlyStats(monthKey: string, userTokens: number, assistantTokens: number, carbonEmissions: number): Promise<void> {
+        try {
+            const result = await new Promise<{ [key: string]: any }>((resolve) => {
+                chrome.storage.local.get([STORAGE_KEYS.MONTHLY_STATS], resolve);
+            });
+
+            const monthlyStats = result[STORAGE_KEYS.MONTHLY_STATS] || {};
+            
+            if (!monthlyStats[monthKey]) {
+                monthlyStats[monthKey] = {
+                    carbonEmissions: 0,
+                    inputTokens: 0,
+                    outputTokens: 0,
+                    lastUpdated: Date.now()
+                };
+            }
+
+            monthlyStats[monthKey].carbonEmissions += carbonEmissions;
+            monthlyStats[monthKey].inputTokens += userTokens;
+            monthlyStats[monthKey].outputTokens += assistantTokens;
+            monthlyStats[monthKey].lastUpdated = Date.now();
+
+            await setStorage(STORAGE_KEYS.MONTHLY_STATS, monthlyStats);
+            console.log('Monthly stats updated for', monthKey);
+        } catch (error) {
+            console.error('Error updating monthly stats:', error);
+        }
+    }
+
+    private getWeekKey(timestamp: number): string {
+        const date = new Date(timestamp);
+        const year = date.getFullYear();
+        const firstDayOfYear = new Date(year, 0, 1);
+        const pastDaysOfYear = (timestamp - firstDayOfYear.getTime()) / 86400000;
+        const weekNumber = Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+        return `${year}-W${weekNumber.toString().padStart(2, '0')}`;
+    }
+
+    private getMonthKey(timestamp: number): string {
+        const date = new Date(timestamp);
+        const year = date.getFullYear();
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        return `${year}-${month}`;
+    }
+
+    private async resetStats(): Promise<void> {
+    // Save current values to global stats before resetting (if they exist)
+    if (this.userTokens > 0 || this.assistantTokens > 0 || this.carbonEmissions > 0) {
+        await this.saveStatsToStorage(); // This will update global stats with current session
+    }
+    
+    // Reset session stats
+    this.userMessageCount = 0;
+    this.userTokens = 0;
+    this.assistantTokens = 0;
+    this.totalTokens = 0;
+    this.carbonEmissions = 0;
+    this.sessionStartTime = Date.now();
+    
+    // Reset tracking variables to current (zero) values
+    this.lastSavedUserTokens = 0;
+    this.lastSavedAssistantTokens = 0;
+    this.lastSavedCarbonEmissions = 0;
+    
+    // Save the reset session stats (but don't affect global stats since we set tracking vars to 0)
+    const stats: CarbonTrackerStats = {
+        totalTokens: this.totalTokens,
+        carbonEmissions: this.carbonEmissions,
+        userTokens: this.userTokens,
+        assistantTokens: this.assistantTokens,
+        userMessageCount: this.userMessageCount,
+        sessionStartTime: this.sessionStartTime
+    };
+
+    await setStorage(STORAGE_KEYS.CARBON_STATS, stats);
+    
+    this.updateUI();
+    console.log('Stats reset successfully');
+}
+
+    private async initWhenReady(): Promise<void> {
+        return new Promise((resolve) => {
+            const attemptInit = () => {
+                const chatContainer = this.findChatContainer();
+                if (chatContainer) {
+                    console.log('Chat container found, setting up observer');
+                    this.setupConversationObserver(chatContainer);
+                    this.analyzeConversation();
+                    resolve();
+                } else {
+                    console.log('Chat container not found, retrying...');
+                    setTimeout(attemptInit, 1000);
+                }
+            };
+            attemptInit();
+        });
     }
 
     private findChatContainer(): HTMLElement | null {
@@ -211,8 +543,13 @@ class ImprovedCarbonTracker {
     }
 
     private setupConversationObserver(chatContainer: HTMLElement): void {
-        const observer = new MutationObserver(this.debounceAnalyzeConversation.bind(this));
-        observer.observe(chatContainer, {
+        // Clean up existing observer
+        if (this.observer) {
+            this.observer.disconnect();
+        }
+
+        this.observer = new MutationObserver(this.debounceAnalyzeConversation.bind(this));
+        this.observer.observe(chatContainer, {
             childList: true,
             subtree: true,
             characterData: true
@@ -416,30 +753,47 @@ class ImprovedCarbonTracker {
         ];
     }
 
-    private createUI(): void {
+    createUI(): void {
+        // Check if UI already exists and remove it
+        const existingUI = document.getElementById('carbon-tracker-container');
+        if (existingUI) {
+            existingUI.remove();
+        }
+
         this.uiContainer = document.createElement('div');
         this.uiContainer.id = 'carbon-tracker-container';
         this.uiContainer.style.cssText = `
-            position: fixed; bottom: 32px; right: 32px;
-            background: rgb(255, 255, 255);
-            backdrop-filter: blur(12px) saturate(1.3);
-            border-radius: 18px;
-            border: 1.5px solid rgba(16,163,127,0.18);
-            box-shadow: 0 8px 32px 0 rgba(16,163,127,0.18), 0 1.5px 8px 0 rgba(0,0,0,0.08);
-            padding: 0;
-            width: 320px;
-            font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
-            font-size: 15px;
-            color: #222;
-            z-index: 10000;
-            transition: box-shadow 0.2s;
+            position: fixed !important; 
+            bottom: 32px !important; 
+            right: 32px !important;
+            background: rgb(255, 255, 255) !important;
+            backdrop-filter: blur(12px) saturate(1.3) !important;
+            border-radius: 18px !important;
+            border: 1.5px solid rgba(16,163,127,0.18) !important;
+            box-shadow: 0 8px 32px 0 rgba(16,163,127,0.18), 0 1.5px 8px 0 rgba(0,0,0,0.08) !important;
+            padding: 0 !important;
+            width: 320px !important;
+            font-family: 'Segoe UI', 'Inter', system-ui, sans-serif !important;
+            font-size: 15px !important;
+            color: #222 !important;
+            z-index: 10000 !important;
+            transition: box-shadow 0.2s !important;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
         `;
 
         const header = document.createElement('div');
         header.style.cssText = `
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 18px 22px 10px 22px; border-bottom: 1px solid #e0f2ef;
-            background: transparent; font-weight: 600; font-size: 17px; color: #10a37f;
+            display: flex !important; 
+            align-items: center !important; 
+            justify-content: space-between !important;
+            padding: 18px 22px 10px 22px !important; 
+            border-bottom: 1px solid #e0f2ef !important;
+            background: transparent !important; 
+            font-weight: 600 !important; 
+            font-size: 17px !important; 
+            color: #10a37f !important;
         `;
 
         const title = document.createElement('div');
@@ -449,9 +803,16 @@ class ImprovedCarbonTracker {
         const toggleButton = document.createElement('button');
         toggleButton.innerHTML = '<svg width="18" height="18" viewBox="0 0 20 20"><path d="M5 8l5 5 5-5" stroke="#10a37f" stroke-width="2" fill="none" stroke-linecap="round"/></svg>';
         toggleButton.style.cssText = `
-            background: none; border: none; cursor: pointer; margin-left: 8px;
-            padding: 2px; border-radius: 4px; transition: background 0.15s;
-            display: flex; align-items: center; justify-content: center;
+            background: none !important; 
+            border: none !important; 
+            cursor: pointer !important; 
+            margin-left: 8px !important;
+            padding: 2px !important; 
+            border-radius: 4px !important; 
+            transition: background 0.15s !important;
+            display: flex !important; 
+            align-items: center !important; 
+            justify-content: center !important;
         `;
         toggleButton.onmouseover = () => toggleButton.style.background = "#e0f2ef";
         toggleButton.onmouseout = () => toggleButton.style.background = "none";
@@ -461,9 +822,16 @@ class ImprovedCarbonTracker {
         resetButton.innerHTML = '<svg width="18" height="18" viewBox="0 0 20 20"><path d="M10 2v2a6 6 0 1 1-6 6" stroke="#10a37f" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M2 4l4-2v4z" fill="#10a37f"/></svg>';
         resetButton.title = 'Reset stats';
         resetButton.style.cssText = `
-            background: none; border: none; cursor: pointer; margin-left: 8px;
-            padding: 2px; border-radius: 4px; transition: background 0.15s;
-            display: flex; align-items: center; justify-content: center;
+            background: none !important; 
+            border: none !important; 
+            cursor: pointer !important; 
+            margin-left: 8px !important;
+            padding: 2px !important; 
+            border-radius: 4px !important; 
+            transition: background 0.15s !important;
+            display: flex !important; 
+            align-items: center !important; 
+            justify-content: center !important;
         `;
         resetButton.onmouseover = () => resetButton.style.background = "#e0f2ef";
         resetButton.onmouseout = () => resetButton.style.background = "none";
@@ -472,10 +840,11 @@ class ImprovedCarbonTracker {
         this.contentArea = document.createElement('div');
         this.contentArea.id = 'carbon-tracker-content';
         this.contentArea.style.cssText = `
-            padding: 18px 22px 18px 22px;
-            background: transparent;
-            border-radius: 0 0 18px 18px;
-            transition: max-height 0.2s;
+            padding: 18px 22px 18px 22px !important;
+            background: transparent !important;
+            border-radius: 0 0 18px 18px !important;
+            transition: max-height 0.2s !important;
+            display: block !important;
         `;
 
         let isCollapsed = false;
@@ -491,16 +860,53 @@ class ImprovedCarbonTracker {
 
         header.appendChild(title);
         const buttonContainer = document.createElement('div');
-        buttonContainer.style.display = 'flex';
+        buttonContainer.style.cssText = 'display: flex !important;';
         buttonContainer.appendChild(toggleButton);
         buttonContainer.appendChild(resetButton);
         header.appendChild(buttonContainer);
 
         this.uiContainer.appendChild(header);
         this.uiContainer.appendChild(this.contentArea);
+        
+        // Make sure the UI is appended properly and persists
         document.body.appendChild(this.uiContainer);
+        
+        // Force a layout recalculation
+        this.uiContainer.offsetHeight;
 
         this.updateUI();
+
+        // Set up a watcher to ensure UI doesn't get removed
+        this.setupUIProtection();
+    }
+
+    private setupUIProtection(): void {
+        // Periodically check if UI still exists and recreate if needed
+        setInterval(() => {
+            if (this.uiContainer && !document.body.contains(this.uiContainer)) {
+                console.log('UI was removed, recreating...');
+                this.createUI();
+            }
+        }, 5000);
+
+        // Watch for DOM changes that might remove our UI
+        const bodyObserver = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList') {
+                    mutation.removedNodes.forEach((node) => {
+                        if (node === this.uiContainer) {
+                            console.log('UI was removed by DOM change, recreating...');
+                            setTimeout(() => this.createUI(), 100);
+                        }
+                    });
+                }
+            });
+        });
+
+        bodyObserver.observe(document.body, {
+            childList: true,
+            subtree: false
+        });
     }
 
     private updateUI(): void {
@@ -570,9 +976,49 @@ class ImprovedCarbonTracker {
     }
 }
 
+// Global instance to prevent multiple initializations
+let trackerInstance: ImprovedCarbonTracker | null = null;
+
 // Initialize the tracker when the document is ready
-if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    new ImprovedCarbonTracker();
-} else {
-    window.addEventListener('DOMContentLoaded', () => new ImprovedCarbonTracker());
+function initializeTracker() {
+    if (trackerInstance) {
+        console.log('Tracker already initialized');
+        return;
+    }
+    
+    console.log('Initializing Carbon Tracker...');
+    trackerInstance = new ImprovedCarbonTracker();
 }
+
+// Multiple initialization strategies to ensure it works
+if (document.readyState === 'complete') {
+    setTimeout(initializeTracker, 1000);
+} else if (document.readyState === 'interactive') {
+    setTimeout(initializeTracker, 2000);
+} else {
+    window.addEventListener('DOMContentLoaded', () => {
+        setTimeout(initializeTracker, 2000);
+    });
+    window.addEventListener('load', () => {
+        setTimeout(initializeTracker, 3000);
+    });
+}
+
+// Handle navigation changes in SPA
+let lastUrl = location.href;
+new MutationObserver(() => {
+    const url = location.href;
+    if (url !== lastUrl) {
+        lastUrl = url;
+        console.log('URL changed, reinitializing tracker...');
+        setTimeout(() => {
+            if (trackerInstance && trackerInstance.isChatGPTDomain()) {
+                // Don't create new instance, just reinitialize UI if needed
+                const existingUI = document.getElementById('carbon-tracker-container');
+                if (!existingUI) {
+                    trackerInstance.createUI();
+                }
+            }
+        }, 3000);
+    }
+}).observe(document, { subtree: true, childList: true });

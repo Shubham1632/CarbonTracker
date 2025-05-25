@@ -1,21 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import  { useEffect, useState } from 'react';
 import { getStorage } from '../util';
-import { CarbonTrackerStats } from '../content-script';
+import {  GlobalCarbonStats } from '../content-script';
 
-const emptyCarbonStats: CarbonTrackerStats = {
-  totalTokens: 0,
-  carbonEmissions: 0,
-  userTokens: 0,
-  assistantTokens: 0,
-  userMessageCount: 0,
-  sessionStartTime: 0
+const emptyGlobalStats: GlobalCarbonStats = {
+  totalInputTokens: 0,
+  totalOutputTokens: 0,
+  totalCarbonEmissions: 0,
+  lastUpdated: 0
 };
-
 const ChatGPTCarbonEmission = () => {
-  const [carbonStats, setCarbonStats] = useState<CarbonTrackerStats>(emptyCarbonStats);
+  const [carbonStats, setCarbonStats] = useState<GlobalCarbonStats>(emptyGlobalStats);
   useEffect(() => {
     async function fetchData() {
-      const getCarbonStats: CarbonTrackerStats = (await getStorage<CarbonTrackerStats>('carbon_tracker_stats')) || emptyCarbonStats;
+      const getCarbonStats: GlobalCarbonStats = (await getStorage<GlobalCarbonStats>('carbon_tracker_global_stats')) || emptyGlobalStats;
       console.log('Carbon stats fetched:', getCarbonStats);
       setCarbonStats(getCarbonStats);
     }
@@ -26,9 +23,9 @@ const ChatGPTCarbonEmission = () => {
   return (
     <div className="p-4 rounded-xl bg-white shadow-md">
       <h2 className="text-xl font-bold mb-2">ChatGPT Carbon Emission</h2>
-      <p>🔍 User Tokens: {carbonStats.userTokens}</p>
-      <p>📄 Assistant Tokens: {carbonStats.assistantTokens}</p>
-      <p>🌱 Total Emission: {carbonStats.carbonEmissions} gCO₂</p>
+      <p>🔍 User Tokens: {carbonStats.totalInputTokens}</p>
+      <p>📄 Assistant Tokens: {carbonStats.totalOutputTokens}</p>
+      <p>🌱 Total Emission: {carbonStats.totalCarbonEmissions} gCO₂</p>
     </div>
   );
 };
