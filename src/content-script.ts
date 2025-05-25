@@ -271,11 +271,9 @@ class ImprovedCarbonTracker {
 
             await setStorage(STORAGE_KEYS.CARBON_STATS, stats);
             
-            // Update global stats
-            await this.updateGlobalStats();
             
-            // Update time period stats
             await this.updateTimePeriodStats();
+            await this.updateGlobalStats();
             
             console.log('Stats saved to storage:', stats);
         } catch (error) {
@@ -355,12 +353,18 @@ class ImprovedCarbonTracker {
         const thisMonth = this.getMonthKey(now);
 
         // Calculate incremental changes
+        console.log('the usertoken diff', this.lastSavedUserTokens, this.userTokens);
         const userTokensDiff = this.lastSavedUserTokens !== undefined ? 
             this.userTokens - this.lastSavedUserTokens : this.userTokens;
+        console.log('the assistant token diff', this.lastSavedAssistantTokens, this.assistantTokens);
         const assistantTokensDiff = this.lastSavedAssistantTokens !== undefined ? 
             this.assistantTokens - this.lastSavedAssistantTokens : this.assistantTokens;
+        console.log('the carbon emissions diff', this.lastSavedCarbonEmissions, this.carbonEmissions);
         const carbonEmissionsDiff = this.lastSavedCarbonEmissions !== undefined ? 
             this.carbonEmissions - this.lastSavedCarbonEmissions : this.carbonEmissions;
+
+        console.log(`Updating time period stats for today=${today}, week=${thisWeek}, month=${thisMonth}`);
+        console.log(`User tokens diff: ${userTokensDiff}, Assistant tokens diff: ${assistantTokensDiff}, Carbon emissions diff: ${carbonEmissionsDiff}`);
 
         await Promise.all([
             this.updateDailyStats(today, userTokensDiff, assistantTokensDiff, carbonEmissionsDiff),
@@ -392,7 +396,7 @@ class ImprovedCarbonTracker {
             dailyStats[dateKey].lastUpdated = Date.now();
 
             await setStorage(STORAGE_KEYS.DAILY_STATS, dailyStats);
-            console.log('Daily stats updated for', dateKey);
+            console.log('Daily stats updated for', dateKey, dailyStats[dateKey]);
         } catch (error) {
             console.error('Error updating daily stats:', error);
         }
@@ -421,7 +425,7 @@ class ImprovedCarbonTracker {
             weeklyStats[weekKey].lastUpdated = Date.now();
 
             await setStorage(STORAGE_KEYS.WEEKLY_STATS, weeklyStats);
-            console.log('Weekly stats updated for', weekKey);
+            console.log('Weekly stats updated for', weekKey, weeklyStats[weekKey]);
         } catch (error) {
             console.error('Error updating weekly stats:', error);
         }
@@ -450,7 +454,7 @@ class ImprovedCarbonTracker {
             monthlyStats[monthKey].lastUpdated = Date.now();
 
             await setStorage(STORAGE_KEYS.MONTHLY_STATS, monthlyStats);
-            console.log('Monthly stats updated for', monthKey);
+            console.log('Monthly stats updated for', monthKey, monthlyStats[monthKey]);
         } catch (error) {
             console.error('Error updating monthly stats:', error);
         }
