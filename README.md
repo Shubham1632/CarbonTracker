@@ -1,16 +1,6 @@
-# Chrome Extension Starter
+# Carbon Tracker Chrome Extension
 
-Chrome extension starter template with React, TypeScript, Vite and Tailwind.
-
-Built from [Chrome Extension Starter](https://github.com/chibat/chrome-extension-typescript-starter)
-
-## Features
-
-- Use React, Vite and TypeScript for development
-- Tailwind CSS support
-- Husky for commit check
-- Actions for build
-- Some utils to simplify Chrome API
+Chrome extension to Track your usage of Carbon Emission.
 
 ## Development
 
