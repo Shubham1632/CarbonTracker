@@ -105,10 +105,7 @@ const CumulativeCarbonEmission = () => {
       value: chatgptStats.totalCarbonEmissions,
       color: "#10a37f",
       icon: (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="10" stroke="#10a37f" strokeWidth="2"/>
-          <path d="M8 12h8M12 8v8" stroke="#10a37f" strokeWidth="2" strokeLinecap="round"/>
-        </svg>
+        <span role="img" aria-label="Robot" className="mr-1">🤖</span>
       ),
     },
     {
@@ -116,10 +113,7 @@ const CumulativeCarbonEmission = () => {
       value: webStats.totalCarbonEmissions,
       color: "#2dd4bf",
       icon: (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="10" stroke="#2dd4bf" strokeWidth="2"/>
-          <path d="M8 12h8" stroke="#2dd4bf" strokeWidth="2" strokeLinecap="round"/>
-        </svg>
+        <span role="img" aria-label="Web" className="mr-1">🕸️</span>
       ),
     },
   ];
@@ -132,33 +126,27 @@ const CumulativeCarbonEmission = () => {
         minHeight: "110px",
         fontSize: "0.97rem",
         marginBottom: "0.5rem",
+        color: "#555"
       }}
     >
       <div className="flex items-center mb-2">
-        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#e0f2ef] mr-2">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="10" stroke="#10a37f" strokeWidth="2"/>
-            <path d="M12 7v5l4 2" stroke="#10a37f" strokeWidth="2" strokeLinecap="round"/>
-          </svg>
+        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 mr-2">
+          <span role="img" aria-label="Earth" style={{ fontSize: 18 }}>🌍</span>
         </span>
-        <h2 className="text-base font-bold text-[#10a37f]">Cumulative Carbon Emission</h2>
+        <h2 className="text-base font-bold" style={{ color: "#10a37f" }}>
+          Cumulative Carbon Emission
+        </h2>
       </div>
       <div className="flex items-center gap-4 mb-2">
-        <DonutChart value={totalEmission} max={maxEmission} />
+        <DonutChart value={totalEmission} max={maxEmission} color="#10a37f" />
         <div className="flex flex-col gap-1">
           <div className="flex items-center text-gray-600 text-xs">
-            <svg width="13" height="13" viewBox="0 0 20 20" className="mr-1" fill="none">
-              <rect x="4" y="4" width="12" height="12" rx="3" stroke="#10a37f" strokeWidth="2"/>
-              <circle cx="10" cy="10" r="2" fill="#10a37f"/>
-            </svg>
+            <span role="img" aria-label="Cloud" className="mr-1">☁️</span>
             Total Emission:
-            <span className="ml-2 font-semibold text-black">{totalEmission.toFixed(4)} gCO₂</span>
+            <span className="ml-2 font-semibold" style={{ color: "#555" }}>{totalEmission.toFixed(4)} gCO₂</span>
           </div>
           <div className="flex items-center text-gray-600 text-xs">
-            <svg width="13" height="13" viewBox="0 0 20 20" className="mr-1" fill="none">
-              <rect x="4" y="4" width="12" height="12" rx="3" stroke="#2dd4bf" strokeWidth="2"/>
-              <circle cx="10" cy="10" r="2" fill="#2dd4bf"/>
-            </svg>
+            <span role="img" aria-label="Pie" className="mr-1">🥧</span>
             <span className="ml-2">Breakdown:</span>
           </div>
         </div>
@@ -168,25 +156,25 @@ const CumulativeCarbonEmission = () => {
           <div key={item.label} className="flex items-center justify-between text-xs">
             <span className="flex items-center gap-1">
               {item.icon}
-              <span style={{ color: item.color, fontWeight: 600 }}>{item.label}</span>
+              <span style={{ color: "#666", fontWeight: 600 }}>{item.label}</span>
             </span>
-            <span className="font-semibold text-black">
-              {item.value?.toFixed(4) || "0.0000"} <span className="text-gray-500 font-normal">gCO₂</span>
+            <span className="font-semibold" style={{ color: "#555" }}>
+              {item.value?.toFixed(4) || "0.0000"} <span className="text-gray-400 font-normal">gCO₂</span>
             </span>
           </div>
         ))}
       </div>
       <div className="mb-1">
         <div className="flex items-center justify-between mb-0.5">
-          <span className="text-[#10a37f] font-semibold text-xs">Progress</span>
-          <span className="font-bold text-black text-xs">
+          <span className="font-semibold text-xs" style={{ color: "#666" }}>Progress</span>
+          <span className="font-bold text-xs" style={{ color: "#10a37f" }}>
             {percent.toFixed(1)}%
           </span>
         </div>
         <div style={{
           width: "100%",
           height: "7px",
-          background: "#e0f2ef",
+          background: "#e0e0e0",
           borderRadius: "5px",
           overflow: "hidden"
         }}>
@@ -199,12 +187,12 @@ const CumulativeCarbonEmission = () => {
           }}></div>
         </div>
       </div>
-      <div className="text-xs text-gray-500 mt-1 flex flex-col gap-1">
+      <div className="text-xs mt-1 flex flex-col gap-1" style={{ color: "#888" }}>
         <span>
-          <span className="text-[#10a37f] font-semibold">{totalEmission.toFixed(2)}</span> g CO₂e emitted in total
+          <span className="font-semibold" style={{ color: "#10a37f" }}>{totalEmission.toFixed(2)}</span> g CO₂e emitted in total
         </span>
         <span>
-          <span className="text-[#10a37f] font-semibold">{chatgptStats.totalInputTokens + chatgptStats.totalOutputTokens}</span> ChatGPT tokens, <span className="text-[#2dd4bf] font-semibold">{webStats.totalVisits + webStats.totalSearches}</span> web actions
+          <span className="font-semibold" style={{ color: "#10a37f" }}>{chatgptStats.totalInputTokens + chatgptStats.totalOutputTokens}</span> <span role="img" aria-label="Robot">🤖</span> tokens, <span className="font-semibold" style={{ color: "#10a37f" }}>{webStats.totalVisits + webStats.totalSearches}</span> <span role="img" aria-label="Web">🕸️</span> web actions
         </span>
       </div>
     </div>
