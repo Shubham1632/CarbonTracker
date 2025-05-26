@@ -3,7 +3,6 @@ import { getStorage } from "../util";
 import { GlobalCarbonStats, ChatGPTTimePeriodStats } from "../content-script";
 import { STORAGE_KEYS_WEB_SEARCH, WebCarbonStats } from "../background";
 
-// Helper to get all keys for a given prefix from chrome.storage.local
 const getAllKeysWithPrefix = async (prefix: string) => {
   return new Promise<string[]>((resolve) => {
     chrome.storage.local.get(null, (items) => {
@@ -13,7 +12,6 @@ const getAllKeysWithPrefix = async (prefix: string) => {
   });
 };
 
-// Helper to download CSV
 function downloadCSV(filename: string, rows: string[][]) {
   const csvContent =
     "data:text/csv;charset=utf-8," +
@@ -57,7 +55,6 @@ function BarChart({
             fill={color}
             rx={3}
           />
-          {/* Label below the bar */}
           <text
             x={`${i * barWidth + barWidth * 0.35}%`}
             y={height + 12}
@@ -84,7 +81,6 @@ function BarChart({
   );
 }
 
-// Helper to get last N date strings for daily (YYYY-MM-DD, most recent last)
 const getLastNDates = (n: number) => {
   const dates: string[] = [];
   const today = new Date();
@@ -96,7 +92,6 @@ const getLastNDates = (n: number) => {
   return dates;
 };
 
-// Helper to get last N week keys (YYYY-W##, most recent last)
 const getLastNWeeks = (n: number) => {
   const weeks: string[] = [];
   const today = new Date();
@@ -112,7 +107,6 @@ const getLastNWeeks = (n: number) => {
   return weeks;
 };
 
-// Helper to get last N months (YYYY-MM, most recent last)
 const getLastNMonths = (n: number) => {
   const months: string[] = [];
   const today = new Date();
@@ -125,20 +119,17 @@ const getLastNMonths = (n: number) => {
   return months;
 };
 
-// Helper to get weekday name from date string (YYYY-MM-DD)
 const getWeekdayName = (dateStr: string) => {
   const d = new Date(dateStr);
-  return d.toLocaleDateString(undefined, { weekday: "short" }); // e.g. Mon, Tue
+  return d.toLocaleDateString(undefined, { weekday: "short" }); 
 };
 
-// Helper to get month name from YYYY-MM
 const getMonthName = (monthStr: string) => {
   const [year, month] = monthStr.split("-");
   const d = new Date(Number(year), Number(month) - 1, 1);
-  return d.toLocaleDateString(undefined, { month: "short" }); // e.g. Mar, May
+  return d.toLocaleDateString(undefined, { month: "short" }); 
 };
 
-// Helper to get week label from week key (e.g. "2024-W23")
 const getWeekLabel = (weekKey: string, allKeys: string[]) => {
   const sorted = [...allKeys].sort((a, b) => b.localeCompare(a));
   const idx = sorted.indexOf(weekKey);
@@ -148,35 +139,28 @@ const getWeekLabel = (weekKey: string, allKeys: string[]) => {
 };
 
 const UsageChart = () => {
-  // Only daily/weekly/monthly
   const [period, setPeriod] = useState<"daily" | "weekly" | "monthly" | "all">("daily");
   const [source, setSource] = useState<"chatgpt" | "web" | "both">("both");
   const [loading, setLoading] = useState(true);
 
-  // Data states
   const [chatgptGlobal, setChatgptGlobal] = useState<GlobalCarbonStats | null>(null);
   const [webGlobal, setWebGlobal] = useState<WebCarbonStats | null>(null);
   const [chatgptPeriods, setChatgptPeriods] = useState<Record<string, ChatGPTTimePeriodStats>>({});
   const [webPeriods, setWebPeriods] = useState<Record<string, WebCarbonStats>>({});
 
-  // For chart
   const [chartData, setChartData] = useState<{ data: number[]; labels: string[]; unit: string }>(
     { data: [], labels: [], unit: "gCO₂" }
   );
 
-  // Load all data on mount or period change
   useEffect(() => {
     async function fetchAll() {
       setLoading(true);
-      // ChatGPT global
       const chatgptGlobalStats = await getStorage<GlobalCarbonStats>("carbon_tracker_global_stats_chatgpt");
       setChatgptGlobal(chatgptGlobalStats || null);
 
-      // Web global
       const webGlobalStats = await getStorage<WebCarbonStats>(STORAGE_KEYS_WEB_SEARCH.CARBON_STATS);
       setWebGlobal(webGlobalStats || null);
 
-      // ChatGPT period stats
       const daily = (await getStorage<Record<string, ChatGPTTimePeriodStats>>("carbon_tracker_daily_stats_chatgpt")) || {};
       const weekly = (await getStorage<Record<string, ChatGPTTimePeriodStats>>("carbon_tracker_weekly_stats_chatgpt")) || {};
       const monthly = (await getStorage<Record<string, ChatGPTTimePeriodStats>>("carbon_tracker_monthly_stats_chatgpt")) || {};
@@ -186,7 +170,6 @@ const UsageChart = () => {
       else if (period === "monthly") periodStats = monthly;
       setChatgptPeriods(periodStats);
 
-      // Web period stats
       let webPeriodStats: Record<string, WebCarbonStats> = {};
       if (period !== "all") {
         let prefix = "";
@@ -204,10 +187,8 @@ const UsageChart = () => {
       setLoading(false);
     }
     fetchAll();
-    // eslint-disable-next-line
   }, [period]);
 
-  // Prepare chart data when data or tab changes
   useEffect(() => {
     if (loading) return;
     let data: number[] = [];
@@ -217,7 +198,6 @@ const UsageChart = () => {
     let webArr: { label: string; value: number }[] = [];
 
     if (period === "daily") {
-      // Last 7 days, always show all days
       const last7Dates = getLastNDates(7);
       chatgptArr = last7Dates.map(k => ({
         label: getWeekdayName(k),
@@ -238,7 +218,6 @@ const UsageChart = () => {
         labels = chatgptArr.map(x => x.label);
       }
     } else if (period === "weekly") {
-      // Last 4 weeks, always show all
       const last4Weeks = getLastNWeeks(4);
       const allKeys = last4Weeks;
       chatgptArr = last4Weeks.map(k => ({
@@ -260,7 +239,6 @@ const UsageChart = () => {
         labels = chatgptArr.map(x => x.label);
       }
     } else if (period === "monthly") {
-      // Last 6 months, always show all
       const last6Months = getLastNMonths(6);
       chatgptArr = last6Months.map(k => ({
         label: getMonthName(k),
@@ -284,9 +262,7 @@ const UsageChart = () => {
     setChartData({ data, labels, unit });
   }, [loading, period, source, chatgptGlobal, webGlobal, chatgptPeriods, webPeriods]);
 
-  // CSV Download
   const handleDownload = async () => {
-    // Gather all extension data
     const items = await new Promise<Record<string, any>>(resolve => chrome.storage.local.get(null, resolve));
     const rows: string[][] = [["Key", "Value"]];
     Object.entries(items).forEach(([k, v]) => {
@@ -327,7 +303,6 @@ const UsageChart = () => {
           Download CSV
         </button>
       </div>
-      {/* Period options */}
       <div className="flex gap-2 mb-2">
         <div className="flex gap-1">
           {["daily", "weekly", "monthly"].map((p) => (
@@ -342,7 +317,6 @@ const UsageChart = () => {
           ))}
         </div>
       </div>
-      {/* Source options */}
       <div className="flex gap-2 mb-2">
         <div className="flex gap-1">
           {["both", "chatgpt", "web"].map((s) => (
