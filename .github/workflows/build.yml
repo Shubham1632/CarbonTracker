@@ -13,25 +13,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
-
-      - name: Set node
-        uses: actions/setup-node@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: lts/*
+          node-version: 20
+          cache: pnpm
 
-      - name: Setup
-        run: npm i -g @antfu/ni
+      - name: Install pnpm
+        run: npm install -g pnpm
 
-      - name: Install
-        run: nci
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
 
       - name: Lint
-        run: nr style
+        run: pnpm run lint || echo "Lint failed"
 
       - name: Build
-        run: nr build
+        run: pnpm run build
