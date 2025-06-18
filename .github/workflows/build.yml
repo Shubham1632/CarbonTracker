@@ -22,10 +22,8 @@ jobs:
           node-version: latest
           cache: pnpm
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: latest
+      - name: Install pnpm
+        run: npm install -g pnpm
 
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
