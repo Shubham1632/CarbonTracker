@@ -28,6 +28,6 @@
     "type": "module",
     "service_worker": "service_worker.js"
   },
-  "permissions": ["storage", "tabs", "tabGroups", "webNavigation", "activeTab", "scripting"],
+  "permissions": ["storage","tabs","webNavigation"],
   "host_permissions": ["<all_urls>"]
 }
