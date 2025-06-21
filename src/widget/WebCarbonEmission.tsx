@@ -2,59 +2,6 @@ import { useEffect, useState } from 'react';
 import { getStorage } from '../util';
 import { STORAGE_KEYS_WEB_SEARCH, WebCarbonStats } from '../background';
 
-// Simple donut chart SVG
-function DonutChart({ value, max, color = "#23272f" }: { value: number, max: number, color?: string }) {
-  const radius = 28;
-  const stroke = 8;
-  const normalized = Math.min(1, value / max);
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference * (1 - normalized);
-
-  return (
-    <svg width="72" height="72" viewBox="0 0 72 72">
-      <circle
-        cx="36"
-        cy="36"
-        r={radius}
-        stroke="#e0f2ef"
-        strokeWidth={stroke}
-        fill="none"
-      />
-      <circle
-        cx="36"
-        cy="36"
-        r={radius}
-        stroke={color}
-        strokeWidth={stroke}
-        fill="none"
-        strokeDasharray={circumference}
-        strokeDashoffset={offset}
-        strokeLinecap="round"
-        style={{ transition: "stroke-dashoffset 0.5s" }}
-      />
-      <text
-        x="36"
-        y="41"
-        textAnchor="middle"
-        fontSize="1.1em"
-        fill="#10a37f"
-        fontWeight="bold"
-      >
-        {value.toFixed(2)}
-      </text>
-      <text
-        x="36"
-        y="54"
-        textAnchor="middle"
-        fontSize="0.7em"
-        fill="#888"
-      >
-        gCO₂
-      </text>
-    </svg>
-  );
-}
-
 const WebCarbonEmission = () => {
   const [pageVisits, setPageVisits] = useState(0);
   const [webSearches, setWebSearches] = useState(0);
@@ -77,7 +24,7 @@ const WebCarbonEmission = () => {
 
   return (
     <div
-      className="rounded-xl shadow p-3 bg-white border border-[#e0f2ef] transition relative"
+      className="rounded-xl shadow p-4 bg-white border border-[#e0f2ef] transition relative flex flex-col gap-2"
       style={{
         boxShadow: "0 2px 8px 0 rgba(16,163,127,0.08), 0 1.5px 8px 0 rgba(0,0,0,0.03)",
         minHeight: "90px",
@@ -86,38 +33,35 @@ const WebCarbonEmission = () => {
         color: "#555"
       }}
     >
-      <div className="flex items-center mb-2">
+      <div className="flex items-center mb-1 gap-2">
         <span
-          className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 mr-2"
+          className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100"
         >
-          <span role="img" aria-label="Web" style={{ fontSize: 18 }}>🕸️</span>
+          <span role="img" aria-label="Web" style={{ fontSize: 20 }}>🕸️</span>
         </span>
         <h2 className="text-base font-bold" style={{ color: "#10a37f" }}>
           Web Carbon Emission
         </h2>
       </div>
-      <div className="flex items-center gap-4 mb-2">
-        <DonutChart value={totalEmission} max={maxEmission} color="#10a37f" />
-        <div className="flex flex-col gap-1">
+      <div className="flex flex-row gap-6 items-center justify-between mt-1 mb-2">
+        <div className="flex flex-col items-start gap-1">
           <div className="flex items-center text-xs" style={{ color: "#666" }}>
             <span role="img" aria-label="Magnifier" className="mr-1">🔍</span>
-            Web Searches:
+            <span>Web Searches:</span>
             <span className="ml-2 font-semibold" style={{ color: "#555" }}>{webSearches}</span>
           </div>
           <div className="flex items-center text-xs" style={{ color: "#666" }}>
             <span role="img" aria-label="Page" className="mr-1">📄</span>
-            Page Visits:
+            <span>Page Visits:</span>
             <span className="ml-2 font-semibold" style={{ color: "#555" }}>{pageVisits}</span>
           </div>
         </div>
-      </div>
-      <div className="mb-1">
-        <div className="flex items-center justify-between mb-0.5">
-          <span className="font-semibold text-xs" style={{ color: "#666" }}>Total Emission</span>
-          <span className="font-bold text-xs" style={{ color: "#10a37f" }}>
-            {totalEmission.toFixed(4)} <span className="text-gray-400 font-normal">gCO₂</span>
-          </span>
+        <div className="flex flex-col items-end">
+          <span className="text-xs font-semibold" style={{ color: "#666" }}>Total Emission</span>
+          <span className="text-lg font-bold" style={{ color: "#10a37f" }}>{totalEmission.toFixed(4)} <span className="text-gray-400 font-normal" style={{ fontSize: '0.85em' }}>gCO₂</span></span>
         </div>
+      </div>
+      <div className="w-full mb-1">
         <div style={{
           width: "100%",
           height: "7px",
@@ -134,10 +78,11 @@ const WebCarbonEmission = () => {
           }}></div>
         </div>
       </div>
-      <div className="text-xs mt-1" style={{ color: "#888" }}>
+      <div className="text-xs mt-1 flex items-center justify-between" style={{ color: "#888" }}>
         <span>
           <span className="font-semibold" style={{ color: "#10a37f" }}>{totalEmission.toFixed(2)}</span> g CO₂e <span role="img" aria-label="Leaf">🍃</span>
         </span>
+        <span className="text-[10px] text-gray-400">(Estimation based on your browsing)</span>
       </div>
     </div>
   );
