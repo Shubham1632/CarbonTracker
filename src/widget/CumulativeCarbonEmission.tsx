@@ -3,26 +3,55 @@ import { getStorage } from "../util";
 import { GlobalCarbonStats } from "../content-script";
 import { STORAGE_KEYS_WEB_SEARCH, WebCarbonStats } from "../background";
 
-// Donut chart SVG component
-function DonutChart({
-  value,
-  max,
-  color = "#10a37f",
-  label = "",
+// Comparative Donut (Pie) Chart SVG component
+function ComparativeDonutChart({
+  chatgptValue,
+  webValue,
+  chatgptColor = "#22c55e", // Vibrant green
+  webColor = "#3b82f6",     // Distinct blue
 }: {
-  value: number;
-  max: number;
-  color?: string;
-  label?: string;
+  chatgptValue: number;
+  webValue: number;
+  max?: number;
+  chatgptColor?: string;
+  webColor?: string;
 }) {
   const radius = 28;
-  const stroke = 8;
-  const normalized = Math.min(1, value / max);
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference * (1 - normalized);
+  const stroke = 5; // Thinner arc
+  const total = Math.max(1, chatgptValue + webValue);
+  const chatgptPercent = chatgptValue / total;
+  const webPercent = webValue / total;
+
+  // Angles for each segment
+  const chatgptAngle = chatgptPercent * 360;
+  const webAngle = webPercent * 360;
+
+  // Helper to describe arc
+  function describeArc(cx: number, cy: number, r: number, startAngle: number, endAngle: number) {
+    const start = polarToCartesian(cx, cy, r, endAngle);
+    const end = polarToCartesian(cx, cy, r, startAngle);
+    const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+    return [
+      "M", start.x, start.y,
+      "A", r, r, 0, largeArcFlag, 0, end.x, end.y
+    ].join(" ");
+  }
+
+  function polarToCartesian(cx: number, cy: number, r: number, angle: number) {
+    const rad = (angle - 90) * Math.PI / 180.0;
+    return {
+      x: cx + r * Math.cos(rad),
+      y: cy + r * Math.sin(rad)
+    };
+  }
+
+  // Start at 0 deg
+  const chatgptArc = describeArc(36, 36, radius, 0, chatgptAngle);
+  const webArc = describeArc(36, 36, radius, chatgptAngle, chatgptAngle + webAngle);
 
   return (
     <svg width="72" height="72" viewBox="0 0 72 72">
+      {/* Background circle */}
       <circle
         cx="36"
         cy="36"
@@ -31,18 +60,27 @@ function DonutChart({
         strokeWidth={stroke}
         fill="none"
       />
-      <circle
-        cx="36"
-        cy="36"
-        r={radius}
-        stroke={color}
-        strokeWidth={stroke}
-        fill="none"
-        strokeDasharray={circumference}
-        strokeDashoffset={offset}
-        strokeLinecap="round"
-        style={{ transition: "stroke-dashoffset 0.5s" }}
-      />
+      {/* ChatGPT arc */}
+      {chatgptValue > 0 && (
+        <path
+          d={chatgptArc}
+          stroke={chatgptColor}
+          strokeWidth={stroke}
+          fill="none"
+          strokeLinecap="round"
+        />
+      )}
+      {/* Web arc */}
+      {webValue > 0 && (
+        <path
+          d={webArc}
+          stroke={webColor}
+          strokeWidth={stroke}
+          fill="none"
+          strokeLinecap="round"
+        />
+      )}
+      {/* Center text: total emission */}
       <text
         x="36"
         y="41"
@@ -51,7 +89,7 @@ function DonutChart({
         fill="#10a37f"
         fontWeight="bold"
       >
-        {value.toFixed(2)}
+        {(chatgptValue + webValue).toFixed(2)}
       </text>
       <text
         x="36"
@@ -138,7 +176,13 @@ const CumulativeCarbonEmission = () => {
         </h2>
       </div>
       <div className="flex items-center gap-4 mb-2">
-        <DonutChart value={totalEmission} max={maxEmission} color="#10a37f" />
+        <ComparativeDonutChart
+          chatgptValue={chatgptStats.totalCarbonEmissions}
+          webValue={webStats.totalCarbonEmissions}
+          max={maxEmission}
+          chatgptColor="#82e0aa"
+          webColor="#28b463"
+        />
         <div className="flex flex-col gap-1">
           <div className="flex items-center text-gray-600 text-xs">
             <span role="img" aria-label="Cloud" className="mr-1">☁️</span>
